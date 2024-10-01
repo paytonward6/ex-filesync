@@ -38,13 +38,14 @@ defmodule FileSync.Worker do
     end
 
     replies
-    |> Enum.map(&remote_write(&1, source))
+    |> Enum.map(&(Task.async(fn -> remote_write(&1, source) end)))
+    |> Task.await_many()
 
     Logger.info("Transferred file '#{source.path}' to: #{replies |> reply_to_string}")
     {:reply, :ok, state}
   end
 
-  def handle_call({:get, path}, _from, %{dir: dir} = state) do
+  def handle_call({:get, path}, _from, %{root_dir: dir} = state) do
     file =
       Path.join(dir, path)
       |> File.stream!()
